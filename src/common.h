@@ -55,6 +55,8 @@
 #	include "win32/thread.h"
 # endif
 
+#elif defined __amigaos4__
+# include "amigaos4/amiga-compat.h"
 #else
 
 # include <unistd.h>
