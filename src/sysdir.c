@@ -32,6 +32,8 @@ static int git_sysdir_guess_system_dirs(git_buf *out)
 {
 #ifdef GIT_WIN32
 	return git_win32__find_system_dirs(out, L"etc\\");
+#elif defined(AMIGA)
+	return git_buf_sets(out, "/ENVARC");
 #else
 	return git_buf_sets(out, "/etc");
 #endif
