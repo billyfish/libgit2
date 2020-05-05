@@ -119,7 +119,12 @@ typedef int git_file;
 extern ssize_t p_read(git_file fd, void *buf, size_t cnt);
 extern int p_write(git_file fd, const void *buf, size_t cnt);
 
-#define p_close(fd) close(fd)
+#ifdef AMIGA
+extern int p_close(int fd);
+#else
+#	define p_close(fd) close(fd)
+#endif
+
 #define p_umask(m) umask(m)
 
 extern int p_open(const char *path, int flags, ...);
@@ -141,6 +146,8 @@ extern size_t p_fsync__cnt;
  */
 #ifdef GIT_WIN32
 #	include "win32/posix.h"
+#elif defined AMIGA
+#	include "amigaos4/posix.h"
 #else
 #	include "unix/posix.h"
 #endif

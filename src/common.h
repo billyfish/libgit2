@@ -57,6 +57,7 @@
 
 #elif defined __amigaos4__
 # include "amigaos4/amiga-compat.h"
+# include "amigaos4/posix.h"
 #else
 
 # include <unistd.h>

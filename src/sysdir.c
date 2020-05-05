@@ -39,7 +39,7 @@ static int git_sysdir_guess_system_dirs(git_buf *out)
 #endif
 }
 
-#ifndef GIT_WIN32
+#if !defined (GIT_WIN32) && !defined (AMIGA)
 static int get_passwd_home(git_buf *out, uid_t uid)
 {
 	struct passwd pwd, *pwdptr;
@@ -81,6 +81,8 @@ static int git_sysdir_guess_global_dirs(git_buf *out)
 {
 #ifdef GIT_WIN32
 	return git_win32__find_global_dirs(out);
+#elif defined AMIGA
+	return git__getenv(out, "HOME");
 #else
 	int error;
 	uid_t uid, euid;
@@ -120,6 +122,8 @@ static int git_sysdir_guess_xdg_dirs(git_buf *out)
 {
 #ifdef GIT_WIN32
 	return git_win32__find_xdg_dirs(out);
+#elif defined (AMIGA)
+	return git__getenv(out, "HOME");
 #else
 	git_buf env = GIT_BUF_INIT;
 	int error;
@@ -139,6 +143,7 @@ static int git_sysdir_guess_xdg_dirs(git_buf *out)
 		if (error == GIT_ENOTFOUND && (error = git__getenv(&env, "HOME")) == 0)
 			error = git_buf_joinpath(out, env.ptr, ".config/git");
 	} else {
+
 		if ((error = get_passwd_home(&env, euid)) == 0)
 			error = git_buf_joinpath(out, env.ptr, ".config/git");
 	}

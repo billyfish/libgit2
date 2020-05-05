@@ -20,7 +20,11 @@
 
 #define GIT_OBJECTS_DIR "objects/"
 #define GIT_OBJECT_DIR_MODE 0777
+#ifdef AMIGA
+#define GIT_OBJECT_FILE_MODE 0666
+#else
 #define GIT_OBJECT_FILE_MODE 0444
+#endif
 
 extern bool git_odb__strict_hash_verification;
 
