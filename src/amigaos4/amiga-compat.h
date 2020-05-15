@@ -11,11 +11,15 @@
 
 
 struct p_timespec {
-	time_t tv_sec;
+	time_t tv_secs;
 	long tv_nsec;
 };
 
 #define timespec p_timespec
+
+
+int amiga_init (void);
+void amiga_exit (void);
 
 
 #endif

@@ -12,6 +12,10 @@
 #include "registry.h"
 #include "stream.h"
 
+#ifdef AMIGA
+#	include <proto/bsdsocket.h>
+#endif
+
 #ifndef _WIN32
 #	include <sys/types.h>
 #	include <sys/socket.h>

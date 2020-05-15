@@ -11,6 +11,10 @@
 #include "git2/common.h"
 #include "posix.h"
 
+#ifdef AMIGA
+#include <time.h>
+#endif
+
 void git_signature_free(git_signature *sig)
 {
 	if (sig == NULL)

@@ -11,10 +11,16 @@
 #include "fcntl.h"
 #include "dirent.h"
 
+#include <unistd.h>
+#include <sys/socket.h>
+
+#include "amigaos4/amiga-compat.h"
+
+
 /* extern int p_fsync(int fd); */
 
 #include <proto/dos.h>
-
+#include <proto/bsdsocket.h>
 
 typedef int GIT_SOCKET;
 
@@ -47,11 +53,13 @@ typedef int GIT_SOCKET;
 #define p_readlink(a, b, c) readlink(a, b, c)
 #define p_symlink(o,n) symlink(o, n)
 #define p_link(o,n) link(o, n)
+#define p_unlink(p) unlink(p)
 #define p_mkdir(p,m) mkdir(p, m)
 #define p_realpath(a,b) realpath(a,b)
 
-#define p_recv(s,b,l,f) recv(s,b,l,f)
-#define p_send(s,b,l,f) send(s,b,l,f)
+
+#define p_recv(s,b,l,f) ISocket->recv(s,b,l,f)
+#define p_send(s,b,l,f) ISocket->send(s,b,l,f)
 #define p_inet_pton(a, b, c) inet_pton(a, b, c)
 
 #define p_strcasecmp(s1, s2) strcasecmp(s1, s2)
@@ -91,45 +99,11 @@ GIT_INLINE(int) p_futimes(int f, const struct p_timeval t[2])
 
 GIT_INLINE(int) p_fsync(int fd)
 {
-	int ret = -1;
-	BPTR fh = (BPTR) _get_osfhandle (fd);
-
-	if (fh) {
-		p_fsync__cnt ++;
-		if (IDOS->FFlush (fh) == 0) {
-			ret = 0;
-		}
-	}
-
-	return ret;
+	p_fsync__cnt ++;
+	return fsync (fd);
 }
 
 
-GIT_INLINE(int) p_close(int fd)
-{
-	int ret = -1;
-	BPTR fh = (BPTR) _get_osfhandle (fd);
-
-	if (fh) {
-		if (IDOS->FClose (fh) == 0) {
-			ret = 0;
-		}
-	}
-
-	return ret;
-}
-
-
-GIT_INLINE(int) p_unlink(const char *pathname)
-{
-	int ret = -1;
-
-	if (IDOS->Delete (pathname) == 0) {
-		ret = 0;
-	}
-
-	return ret;
-}
 
 
 
