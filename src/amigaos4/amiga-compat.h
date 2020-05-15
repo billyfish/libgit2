@@ -17,11 +17,12 @@ struct timespec
 };
 */
 
+/*
 struct p_timespec {
-	time_t tv_sec;
+	time_t tv_secs;
 	long tv_nsec;
 };
-
+*/
 
 struct p_timeval {
 	time_t tv_sec;
@@ -30,5 +31,10 @@ struct p_timeval {
 
 #define timespec p_timespec
 
+
+int amiga_init (void);
+void amiga_exit (void);
+
+extern double difftime (time_t t1, time_t t0);
 
 #endif

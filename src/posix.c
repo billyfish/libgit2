@@ -13,6 +13,11 @@
 
 size_t p_fsync__cnt = 0;
 
+
+#ifdef AMIGA
+#	include <proto/bsdsocket.h>
+#endif
+
 #ifndef GIT_WIN32
 
 #ifdef NO_ADDRINFO

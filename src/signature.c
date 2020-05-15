@@ -11,6 +11,7 @@
 #include "git2/common.h"
 #include "posix.h"
 
+
 void git_signature_free(git_signature *sig)
 {
 	if (sig == NULL)

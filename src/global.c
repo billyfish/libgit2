@@ -80,6 +80,14 @@ static int init_common(void)
 		if ((ret = git__init_callbacks[i]()) != 0)
 			break;
 
+
+#ifdef AMIGA
+	if (ret == 0) {
+		ret = amiga_init();
+	}
+#endif
+
+
 	GIT_MEMORY_BARRIER;
 
 	return ret;
@@ -103,6 +111,14 @@ static void shutdown_common(void)
 
 	git__free(git__user_agent);
 	git__free(git__ssl_ciphers);
+
+
+
+#ifdef AMIGA
+	amiga_exit();
+#endif
+
+
 }
 
 /**

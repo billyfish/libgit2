@@ -124,11 +124,9 @@ typedef int git_file;
 extern ssize_t p_read(git_file fd, void *buf, size_t cnt);
 extern int p_write(git_file fd, const void *buf, size_t cnt);
 
-#ifndef AMIGA
 #define p_close(fd) close(fd)
-
 #define p_umask(m) umask(m)
-#endif
+
 
 extern int p_open(const char *path, int flags, ...);
 extern int p_creat(const char *path, mode_t mode);
