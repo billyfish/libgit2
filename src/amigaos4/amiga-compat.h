@@ -9,10 +9,23 @@
 
 #include <sys/types.h>
 
+/*
+struct timespec
+{
+	unsigned int tv_sec;
+	unsigned int tv_nsec;
+};
+*/
 
 struct p_timespec {
 	time_t tv_sec;
 	long tv_nsec;
+};
+
+
+struct p_timeval {
+	time_t tv_sec;
+	long tv_usec;
 };
 
 #define timespec p_timespec
