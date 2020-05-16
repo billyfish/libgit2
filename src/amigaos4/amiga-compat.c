@@ -27,28 +27,38 @@
 #include <proto/timer.h>
 #include <proto/bsdsocket.h>
 #include <proto/exec.h>
+#include <proto/dos.h>
+#include <proto/utility.h>
 
-struct TimerIFace *ITimer;
-struct Device * TimerBase;
+struct Device *TimerBase = NULL;
+struct TimerIFace *ITimer = NULL;
 
-struct Library * SocketBase;
-struct SocketIFace *ISocket;
+struct Library *SocketBase = NULL;
+struct SocketIFace *ISocket = NULL;
 
+struct Library *UtilityBase = NULL;
+struct UtilityIFace *IUtility = NULL;
+
+struct Library *DOSBase = NULL;
+struct DOSIFace *IDOS = NULL;
+
+
+static struct TimeRequest *s_tr_p = NULL;
 
 static int amiga_open_lib (struct Library **library_pp, const char *lib_name_s, const uint32_t lib_version, struct Interface **interface_pp, const char * const interface_name_s, const uint32_t interface_version);
 
 static void amiga_close_lib (struct Library *library_p, struct Interface *interface_p);
 
+static int amiga_open_timer (void);
+
+static void amiga_close_timer (void);
 
 
-double
-difftime(time_t t1,time_t t0)
+double difftime (time_t t0, time_t t1)
 {
-	double result;
+	double result = ((double) t0) - ((double) t1);
 
-	result = ((double)t1) - ((double)t0);
-
-	return(result);
+	return result;
 }
 
 
@@ -56,8 +66,14 @@ int amiga_init (void)
 {
 	int ret = -1;
 
-	if (amiga_open_lib (&SocketBase, "socket.library", 52L, (struct Interface **) &ISocket, "main", 1)) {
-		ret = 0;
+	if (amiga_open_lib (&DOSBase, "dos.library", 52L, (struct Interface **) &IDOS, "main", 1) == 0) {
+		if (amiga_open_lib (&UtilityBase, "utility.library", 52L, (struct Interface **) &IUtility, "main", 1) == 0) {
+			if (amiga_open_lib (&SocketBase, "socket.library", 52L, (struct Interface **) &ISocket, "main", 1) == 0) {
+				if (amiga_open_timer () == 0) {
+					ret = 0;
+				}
+			}
+		}
 	}
 
 	return ret;
@@ -66,7 +82,10 @@ int amiga_init (void)
 
 void amiga_exit (void)
 {
+	amiga_close_timer ();
 	amiga_close_lib (SocketBase, (struct Interface *) ISocket);
+	amiga_close_lib (UtilityBase, (struct Interface *) IUtility);
+	amiga_close_lib (DOSBase, (struct Interface *) IDOS);
 }
 
 
@@ -98,3 +117,32 @@ static void amiga_close_lib (struct Library *library_p, struct Interface *interf
 	}
 }
 
+
+
+static int amiga_open_timer (void)
+{
+	int ret = -1;
+
+	s_tr_p = IExec->AllocSysObjectTags (ASOT_IOREQUEST,
+		ASOIOR_Size, sizeof (struct TimeRequest),
+		ASOIOR_ReplyPort, NULL,
+		TAG_END);
+
+	if (s_tr_p != NULL) {
+		if (! (IExec->OpenDevice ("timer.device", UNIT_VBLANK, (struct IORequest *) s_tr_p, 0) )) {
+			TimerBase = s_tr_p -> Request.io_Device;
+			ITimer = (struct TimerIFace*) IExec->GetInterface ((struct Library *) TimerBase, "main", 1, NULL);
+			ret = 0;
+		}
+	}
+
+	return ret;
+}
+
+
+static void amiga_close_timer (void)
+{
+	IExec->DropInterface ((struct Interface *) ITimer);
+	IExec->CloseDevice ((struct IORequest *) s_tr_p);
+	IExec->FreeSysObject (ASOT_IOREQUEST, s_tr_p);
+}
