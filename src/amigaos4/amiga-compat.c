@@ -45,7 +45,8 @@ struct Library *DOSBase = NULL;
 struct DOSIFace *IDOS = NULL;
 
 
-static struct TimeRequest *s_tr_p = NULL;
+static struct TimeRequest *s_time_req_p = NULL;
+static struct MsgPort *s_timer_msg_port_p = NULL;
 
 static int amiga_open_lib (struct Library **library_pp, const char *lib_name_s, const uint32_t lib_version, struct Interface **interface_pp, const char * const interface_name_s, const uint32_t interface_version);
 
@@ -70,7 +71,7 @@ int amiga_init (void)
 
 	if (amiga_open_lib (&DOSBase, "dos.library", 52L, (struct Interface **) &IDOS, "main", 1) == 0) {
 		if (amiga_open_lib (&UtilityBase, "utility.library", 52L, (struct Interface **) &IUtility, "main", 1) == 0) {
-			if (amiga_open_lib (&SocketBase, "socket.library", 52L, (struct Interface **) &ISocket, "main", 1) == 0) {
+			if (amiga_open_lib (&SocketBase, "bsdsocket.library", 4L, (struct Interface **) &ISocket, "main", 1) == 0) {
 				if (amiga_open_timer () == 0) {
 					ret = 0;
 				} else {
@@ -136,28 +137,38 @@ static int amiga_open_timer (void)
 {
 	int ret = -1;
 
-	s_tr_p = IExec->AllocSysObjectTags (ASOT_IOREQUEST,
-		ASOIOR_Size, sizeof (struct TimeRequest),
-		ASOIOR_ReplyPort, NULL,
-		TAG_END);
+	s_timer_msg_port_p = (struct MsgPort *) IExec->AllocSysObjectTags (ASOT_PORT,
+		ASOPORT_Name, "Timer port",
+		TAG_DONE);
 
-	if (s_tr_p != NULL) {
-		if (! (IExec->OpenDevice ("timer.device", UNIT_VBLANK, (struct IORequest *) s_tr_p, 0) )) {
-			TimerBase = s_tr_p -> Request.io_Device;
-			ITimer = (struct TimerIFace*) IExec->GetInterface ((struct Library *) TimerBase, "main", 1, NULL);
+	if (s_timer_msg_port_p != NULL) {
+		s_time_req_p = (struct TimeRequest *) IExec->AllocSysObjectTags (ASOT_IOREQUEST,
+			ASOIOR_Size, sizeof (struct TimeRequest),
+			ASOIOR_ReplyPort, s_timer_msg_port_p,
+			TAG_END);
 
-			if (ITimer != NULL) {
-				ret = 0;
+		if (s_time_req_p != NULL) {
+			if (! (IExec->OpenDevice ("timer.device", UNIT_VBLANK, (struct IORequest *) s_time_req_p, 0) )) {
+				TimerBase = s_time_req_p -> Request.io_Device;
+				ITimer = (struct TimerIFace*) IExec->GetInterface ((struct Library *) TimerBase, "main", 1, NULL);
+
+				if (ITimer != NULL) {
+					ret = 0;
+				} else {
+					DB (KPRINTF ("%s %ld - IExec->GetInterface failed to get ITimer\n", __FILE__, __LINE__));
+				}
+
 			} else {
-				DB (KPRINTF ("%s %ld - IExec->GetInterface failed to get ITimer\n", __FILE__, __LINE__));
+				DB (KPRINTF ("%s %ld - IExec->OpenDevice failed to open timer.device\n", __FILE__, __LINE__));
 			}
 
 		} else {
-			DB (KPRINTF ("%s %ld - IExec->OpenDevice failed to open timer.device\n", __FILE__, __LINE__));
+			IExec->FreeSysObject (ASOT_PORT, s_timer_msg_port_p);
+			DB (KPRINTF ("%s %ld - Failed to allocate s_time_req_p\n", __FILE__, __LINE__));
 		}
 
 	} else {
-		DB (KPRINTF ("%s %ld - Failed to allocate TimeRequest\n", __FILE__, __LINE__));
+		DB (KPRINTF ("%s %ld - Failed to allocate s_timer_msg_port_p\n", __FILE__, __LINE__));
 	}
 
 	return ret;
@@ -167,6 +178,7 @@ static int amiga_open_timer (void)
 static void amiga_close_timer (void)
 {
 	IExec->DropInterface ((struct Interface *) ITimer);
-	IExec->CloseDevice ((struct IORequest *) s_tr_p);
-	IExec->FreeSysObject (ASOT_IOREQUEST, s_tr_p);
+	IExec->CloseDevice ((struct IORequest *) s_time_req_p);
+	IExec->FreeSysObject (ASOT_IOREQUEST, s_time_req_p);
+	IExec->FreeSysObject (ASOT_PORT, s_timer_msg_port_p);
 }
