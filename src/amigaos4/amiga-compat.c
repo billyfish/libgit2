@@ -30,6 +30,8 @@
 #include <proto/dos.h>
 #include <proto/utility.h>
 
+#include "debugging_utils.h"
+
 struct Device *TimerBase = NULL;
 struct TimerIFace *ITimer = NULL;
 
@@ -71,9 +73,17 @@ int amiga_init (void)
 			if (amiga_open_lib (&SocketBase, "socket.library", 52L, (struct Interface **) &ISocket, "main", 1) == 0) {
 				if (amiga_open_timer () == 0) {
 					ret = 0;
+				} else {
+					DB (KPRINTF ("%s %ld - Failed to init Timer Device\n", __FILE__, __LINE__));
 				}
+			} else {
+				DB (KPRINTF ("%s %ld - Failed to init Socket library\n", __FILE__, __LINE__));
 			}
+		} else {
+			DB (KPRINTF ("%s %ld - Failed to init Utility library\n", __FILE__, __LINE__));
 		}
+	} else {
+		DB (KPRINTF ("%s %ld - Failed to init DOS library\n", __FILE__, __LINE__));
 	}
 
 	return ret;
@@ -99,7 +109,10 @@ static int amiga_open_lib (struct Library **library_pp, const char *lib_name_s, 
 			ret = 0;
 		} else {
 			IExec->CloseLibrary (*library_pp);
+			DB (KPRINTF ("%s %ld - IExec->GetInterface failed for interface \"%s\" version %lu\n", __FILE__, __LINE__, interface_name_s, interface_version));
 		}
+	} else {
+		DB (KPRINTF ("%s %ld - IExec->OpenLibrary failed for \"%s\" version %lu\n", __FILE__, __LINE__, lib_name_s, lib_version));
 	}
 
 	return ret;
@@ -132,8 +145,19 @@ static int amiga_open_timer (void)
 		if (! (IExec->OpenDevice ("timer.device", UNIT_VBLANK, (struct IORequest *) s_tr_p, 0) )) {
 			TimerBase = s_tr_p -> Request.io_Device;
 			ITimer = (struct TimerIFace*) IExec->GetInterface ((struct Library *) TimerBase, "main", 1, NULL);
-			ret = 0;
+
+			if (ITimer != NULL) {
+				ret = 0;
+			} else {
+				DB (KPRINTF ("%s %ld - IExec->GetInterface failed to get ITimer\n", __FILE__, __LINE__));
+			}
+
+		} else {
+			DB (KPRINTF ("%s %ld - IExec->OpenDevice failed to open timer.device\n", __FILE__, __LINE__));
 		}
+
+	} else {
+		DB (KPRINTF ("%s %ld - Failed to allocate TimeRequest\n", __FILE__, __LINE__));
 	}
 
 	return ret;
