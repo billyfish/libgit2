@@ -1,5 +1,10 @@
 #include "common.h"
 
+
+#ifdef AMIGA
+static const char USED min_stack[] = "$STACK:262144";
+#endif
+
 /* This part is not strictly libgit2-dependent, but you can use this
  * as a starting point for a git-like tool */
 

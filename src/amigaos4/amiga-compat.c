@@ -30,6 +30,11 @@
 #include <proto/dos.h>
 #include <proto/utility.h>
 
+
+#include <proto/amisslmaster.h>
+
+#include <libraries/amisslmaster.h>
+
 #include "debugging_utils.h"
 
 struct Device *TimerBase = NULL;
@@ -44,9 +49,17 @@ struct UtilityIFace *IUtility = NULL;
 struct Library *DOSBase = NULL;
 struct DOSIFace *IDOS = NULL;
 
+struct Library *AmiSSLBase = NULL;
+struct AmiSSLIFace *IAmiSSL = NULL;
+
+struct Library *AmiSSLMasterBase = NULL;
+struct AmiSSLMasterIFace *IAmiSSLMaster = NULL;
 
 static struct TimeRequest *s_time_req_p = NULL;
 static struct MsgPort *s_timer_msg_port_p = NULL;
+
+static BOOL s_amissl_init_flag = FALSE;
+
 
 static int amiga_open_lib (struct Library **library_pp, const char *lib_name_s, const uint32_t lib_version, struct Interface **interface_pp, const char * const interface_name_s, const uint32_t interface_version);
 
@@ -55,6 +68,13 @@ static void amiga_close_lib (struct Library *library_p, struct Interface *interf
 static int amiga_open_timer (void);
 
 static void amiga_close_timer (void);
+
+
+static int amiga_init_ssl (void);
+
+static void amiga_exit_ssl (void);
+
+
 
 
 double difftime (time_t t0, time_t t1)
@@ -72,10 +92,14 @@ int amiga_init (void)
 	if (amiga_open_lib (&DOSBase, "dos.library", 52L, (struct Interface **) &IDOS, "main", 1) == 0) {
 		if (amiga_open_lib (&UtilityBase, "utility.library", 52L, (struct Interface **) &IUtility, "main", 1) == 0) {
 			if (amiga_open_lib (&SocketBase, "bsdsocket.library", 4L, (struct Interface **) &ISocket, "main", 1) == 0) {
-				if (amiga_open_timer () == 0) {
-					ret = 0;
+				if (amiga_init_ssl () == 0) {
+					if (amiga_open_timer () == 0) {
+						ret = 0;
+					} else {
+						DB (KPRINTF ("%s %ld - Failed to init Timer Device\n", __FILE__, __LINE__));
+					}
 				} else {
-					DB (KPRINTF ("%s %ld - Failed to init Timer Device\n", __FILE__, __LINE__));
+					DB (KPRINTF ("%s %ld - Failed to init SSL\n", __FILE__, __LINE__));
 				}
 			} else {
 				DB (KPRINTF ("%s %ld - Failed to init Socket library\n", __FILE__, __LINE__));
@@ -94,6 +118,7 @@ int amiga_init (void)
 void amiga_exit (void)
 {
 	amiga_close_timer ();
+	amiga_exit_ssl ();
 	amiga_close_lib (SocketBase, (struct Interface *) ISocket);
 	amiga_close_lib (UtilityBase, (struct Interface *) IUtility);
 	amiga_close_lib (DOSBase, (struct Interface *) IDOS);
@@ -181,4 +206,56 @@ static void amiga_close_timer (void)
 	IExec->CloseDevice ((struct IORequest *) s_time_req_p);
 	IExec->FreeSysObject (ASOT_IOREQUEST, s_time_req_p);
 	IExec->FreeSysObject (ASOT_PORT, s_timer_msg_port_p);
+}
+
+
+static int amiga_init_ssl (void)
+{
+	int ret = -1;
+
+	if (amiga_open_lib (&AmiSSLMasterBase, "amisslmaster.library", AMISSLMASTER_MIN_VERSION, (struct Interface **) &IAmiSSLMaster, "main", 1) == 0) {
+		if (IAmiSSLMaster->InitAmiSSLMaster (AMISSL_CURRENT_VERSION, TRUE)) {
+			if ((AmiSSLBase = IAmiSSLMaster -> OpenAmiSSL ()) != NULL) {
+				if ((IAmiSSL = (struct AmiSSLIFace *) IExec->GetInterface (AmiSSLBase, "main", 1, NULL))  != NULL) {
+					if (InitAmiSSL (AmiSSL_ErrNoPtr, &errno, AmiSSL_ISocket, ISocket, TAG_DONE) == 0) {
+						ret = 0;
+						s_amissl_init_flag = TRUE;
+					} else {
+						DB (KPRINTF ("%s %ld - InitAmiSSL failed\n", __FILE__, __LINE__));
+					}
+				} else {
+					DB (KPRINTF ("%s %ld - GetInterface for IAmiSSL failed\n", __FILE__, __LINE__));
+				}
+
+			} else {
+				DB (KPRINTF ("%s %ld - IAmiSSLMaster -> OpenAmiSSL () failed\n", __FILE__, __LINE__));
+			}
+
+		} else {
+			DB (KPRINTF ("%s %ld - InitAmiSSLMaster () failed\n", __FILE__, __LINE__));
+		}
+
+	} else {
+		DB (KPRINTF ("%s %ld - Failed to open AmiSSLMaster Library\n", __FILE__, __LINE__));
+	}
+
+	return ret;
+}
+
+
+static void amiga_exit_ssl (void)
+{
+	if (s_amissl_init_flag) {
+		CleanupAmiSSL (TAG_DONE);
+	}
+
+	if (AmiSSLBase) {
+		if (IAmiSSL) {
+			IExec->DropInterface ((struct Interface *) IAmiSSL);
+		}
+
+		IAmiSSLMaster->CloseAmiSSL ();
+	}
+
+	amiga_close_lib (AmiSSLMasterBase, (struct Interface *) IAmiSSLMaster);
 }

@@ -50,7 +50,10 @@
 #endif
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(*x))
+
+//#ifndef __amigaos4__
 #define UNUSED(x) (void)(x)
+//#endif
 
 #include "args.h"
 

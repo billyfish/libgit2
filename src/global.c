@@ -67,7 +67,7 @@ static void git__global_state_cleanup(git_global_st *st)
 static int init_common(void)
 {
 	size_t i;
-	int ret;
+	int ret = 0;
 
 	/* Initialize the CRT debug allocator first, before our first malloc */
 #if defined(GIT_MSVC_CRTDBG)
@@ -75,17 +75,18 @@ static int init_common(void)
 	git_win32__stack_init();
 #endif
 
+#ifdef AMIGA
+	ret = amiga_init();
+	printf ("amiga_init returned %d\n", ret);
+#endif
+
+
 	/* Initialize subsystems that have global state */
 	for (i = 0; i < ARRAY_SIZE(git__init_callbacks); i++)
 		if ((ret = git__init_callbacks[i]()) != 0)
 			break;
 
 
-#ifdef AMIGA
-	if (ret == 0) {
-		ret = amiga_init();
-	}
-#endif
 
 
 	GIT_MEMORY_BARRIER;

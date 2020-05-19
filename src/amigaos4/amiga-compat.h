@@ -9,6 +9,11 @@
 
 #include <sys/types.h>
 
+
+#define __USE_INLINE__
+#include <proto/amissl.h>
+#undef __USE_INLINE__
+
 /*
 struct timespec
 {
@@ -18,7 +23,7 @@ struct timespec
 */
 
 /*
-struct p_timespec {
+struct p_timespec {stack
 	time_t tv_secs;
 	long tv_nsec;
 };
